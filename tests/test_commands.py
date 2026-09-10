@@ -1,4 +1,7 @@
+import os
 import unittest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt5.QtWidgets import QApplication, QUndoStack
 

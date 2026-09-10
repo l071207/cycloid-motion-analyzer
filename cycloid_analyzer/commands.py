@@ -38,12 +38,14 @@ class ReplaceMovementTraceCommand(QUndoCommand):
     def __init__(self, canvas, new_trace: MovementTraceRecord):
         super().__init__("Trace movement")
         self._canvas = canvas
-        self._new_trace = new_trace
-        self._previous_trace = canvas.get_movement_trace_record()
+        self._new_trace = MovementTraceRecord(new_trace.record_id, list(new_trace.points))
+        previous_trace = canvas.get_movement_trace_record()
+        self._previous_trace = (
+            MovementTraceRecord(previous_trace.record_id, list(previous_trace.points)) if previous_trace else None
+        )
 
     def redo(self) -> None:
         self._canvas.set_movement_trace(self._new_trace)
 
     def undo(self) -> None:
         self._canvas.set_movement_trace(self._previous_trace)
-

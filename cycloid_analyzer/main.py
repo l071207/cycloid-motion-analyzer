@@ -8,7 +8,7 @@ from cycloid_analyzer.main_window import MainWindow
 
 
 def main() -> int:
-    app = QApplication(sys.argv)
+    app = QApplication.instance() or QApplication(sys.argv)
     window = MainWindow()
     window.show()
     return app.exec_()
@@ -16,4 +16,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
