@@ -50,7 +50,7 @@ Cycloid Motion Analyzer is a Windows-friendly PyQt5 desktop application for draw
 
 1. Use **File → Open PNG…** to load a movement image, or **File → Load bundled demo**.
 2. Choose **Draw Cycloid** and drag on the image to create a cycloid path.
-3. Choose **Trace Movement** and draw a freehand trace over the observed motion.
+3. Choose **Trace Movement**, drag to trace the observed motion, then right-click to finish the trace.
 4. Select a cycloid and adjust **Radius**, **Frequency**, and **Phase** in the right panel.
 5. Click **Compare selected cycloid to movement trace** to generate metrics.
 6. Use **Undo** and **Redo** from the toolbar or Edit menu as needed.

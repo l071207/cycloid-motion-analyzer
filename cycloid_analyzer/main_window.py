@@ -96,7 +96,7 @@ class MainWindow(QMainWindow):
         ]:
             action = QAction(label, self)
             action.setCheckable(True)
-            action.triggered.connect(lambda checked, mode=mode_name: checked and self.canvas.set_mode(mode))
+            action.triggered.connect(lambda checked, mode=mode_name: checked and self._activate_mode(mode))
             action_group.addAction(action)
             toolbar.addAction(action)
             self._mode_actions[mode_name] = action
@@ -149,6 +149,16 @@ class MainWindow(QMainWindow):
         slider.setRange(minimum, maximum)
         slider.setValue(value)
         return slider
+
+    def _activate_mode(self, mode: str) -> None:
+        self.canvas.set_mode(mode)
+        messages = {
+            "select": "Select a cycloid to inspect or edit its parameters.",
+            "draw": "Drag on the image to create a cycloid preview, then release to place it.",
+            "trace": "Drag to trace movement. Right-click to finish the current trace.",
+            "pan": "Drag the view to pan the image and overlays.",
+        }
+        self.statusBar().showMessage(messages[mode])
 
     def _samples_dir(self) -> Path:
         if hasattr(sys, "_MEIPASS"):
@@ -212,10 +222,7 @@ class MainWindow(QMainWindow):
 
     def _on_slider_changed(self) -> None:
         parameters = self.current_parameters()
-        self.radius_value.setText(f"{parameters.radius:.0f}px")
-        self.frequency_value.setText(f"{parameters.frequency:.1f} turns")
-        self.phase_value.setText(f"{parameters.phase_degrees:.0f}°")
-        self.canvas.set_current_parameters(parameters)
+        self._sync_parameter_display(parameters)
 
         if self._slider_update_guard:
             return
@@ -240,7 +247,13 @@ class MainWindow(QMainWindow):
         self.frequency_slider.setValue(int(round(parameters.frequency * 10)))
         self.phase_slider.setValue(int(round(parameters.phase_degrees)))
         self._slider_update_guard = False
-        self._on_slider_changed()
+        self._sync_parameter_display(self.current_parameters())
+
+    def _sync_parameter_display(self, parameters: CycloidParameters) -> None:
+        self.radius_value.setText(f"{parameters.radius:.0f}px")
+        self.frequency_value.setText(f"{parameters.frequency:.1f} turns")
+        self.phase_value.setText(f"{parameters.phase_degrees:.0f}°")
+        self.canvas.set_current_parameters(parameters)
 
     def current_parameters(self) -> CycloidParameters:
         return CycloidParameters(

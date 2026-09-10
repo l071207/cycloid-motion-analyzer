@@ -108,6 +108,8 @@ class CanvasView(QGraphicsView):
         self._scene.selectionChanged.connect(self._notify_selection_changed)
 
     def set_mode(self, mode: str) -> None:
+        if mode != self._mode:
+            self._clear_draft()
         self._mode = mode
         self.setDragMode(QGraphicsView.ScrollHandDrag if mode == "pan" else QGraphicsView.NoDrag)
 
@@ -115,6 +117,10 @@ class CanvasView(QGraphicsView):
         self._current_parameters = parameters
 
     def set_background_pixmap(self, pixmap: QPixmap) -> None:
+        self._clear_draft()
+        for record_id in list(self._cycloid_items):
+            self.remove_cycloid(record_id)
+        self.set_movement_trace(None)
         self._background_item.setPixmap(pixmap)
         self._scene.setSceneRect(self._background_item.boundingRect())
         self.fitInView(self._background_item, Qt.KeepAspectRatio)
@@ -200,7 +206,11 @@ class CanvasView(QGraphicsView):
             event.accept()
             return
         if self._mode == "trace" and event.button() == Qt.LeftButton:
-            self._draft_points = [(scene_pos.x(), scene_pos.y())]
+            current = (scene_pos.x(), scene_pos.y())
+            if not self._draft_points:
+                self._draft_points = [current]
+            elif current != self._draft_points[-1]:
+                self._draft_points.append(current)
             self._set_preview(build_path(self._draft_points))
             event.accept()
             return
@@ -224,7 +234,7 @@ class CanvasView(QGraphicsView):
             self._set_preview(build_path(points))
             event.accept()
             return
-        if self._mode == "trace" and self._draft_points:
+        if self._mode == "trace" and self._draft_points and event.buttons() & Qt.LeftButton:
             current = (scene_pos.x(), scene_pos.y())
             if hypot(current[0] - self._draft_points[-1][0], current[1] - self._draft_points[-1][1]) >= 2:
                 self._draft_points.append(current)
@@ -253,22 +263,22 @@ class CanvasView(QGraphicsView):
             self.cycloid_drawn.emit(start, end)
             event.accept()
             return
-        if self._mode == "trace" and self._draft_points and event.button() != Qt.LeftButton:
-            self._draft_points = []
-            self._clear_preview()
-            event.accept()
-            return
         if self._mode == "trace" and self._draft_points and event.button() == Qt.LeftButton:
             current = (scene_pos.x(), scene_pos.y())
             if not self._draft_points or current != self._draft_points[-1]:
                 self._draft_points.append(current)
-            if len(self._draft_points) == 1:
-                self._draft_points.append((scene_pos.x(), scene_pos.y()))
+            self._set_preview(build_path(self._draft_points))
+            event.accept()
+            return
+        if self._mode == "trace" and self._draft_points and event.button() == Qt.RightButton:
             points = list(self._draft_points)
-            self._draft_points = []
-            self._clear_preview()
+            self._clear_draft()
             if any(point != points[0] for point in points[1:]):
                 self.movement_trace_drawn.emit(points)
+            event.accept()
+            return
+        if self._mode == "trace" and self._draft_points:
+            self._clear_draft()
             event.accept()
             return
         super().mouseReleaseEvent(event)
@@ -286,6 +296,11 @@ class CanvasView(QGraphicsView):
         if self._preview_item is not None:
             self._scene.removeItem(self._preview_item)
             self._preview_item = None
+
+    def _clear_draft(self) -> None:
+        self._draft_start = None
+        self._draft_points = []
+        self._clear_preview()
 
     def _notify_selection_changed(self) -> None:
         self.cycloid_selection_changed.emit(self.selected_cycloid_record())
