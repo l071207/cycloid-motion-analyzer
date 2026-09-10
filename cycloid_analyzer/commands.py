@@ -4,7 +4,9 @@ from dataclasses import replace
 
 from PyQt5.QtWidgets import QUndoCommand
 
-from cycloid_analyzer.canvas import CycloidRecord, MovementTraceRecord
+from PyQt5.QtGui import QPixmap
+
+from cycloid_analyzer.canvas import CanvasStateRecord, CycloidRecord, MovementTraceRecord
 
 
 class AddCycloidCommand(QUndoCommand):
@@ -49,3 +51,29 @@ class ReplaceMovementTraceCommand(QUndoCommand):
 
     def undo(self) -> None:
         self._canvas.set_movement_trace(self._previous_trace)
+
+
+class ReplaceCanvasStateCommand(QUndoCommand):
+    def __init__(self, canvas, before: CanvasStateRecord, after: CanvasStateRecord, label: str = "Replace canvas"):
+        super().__init__(label)
+        self._canvas = canvas
+        self._before = self._copy_state(before)
+        self._after = self._copy_state(after)
+
+    def redo(self) -> None:
+        self._canvas.apply_state(self._after)
+
+    def undo(self) -> None:
+        self._canvas.apply_state(self._before)
+
+    def _copy_state(self, state: CanvasStateRecord) -> CanvasStateRecord:
+        trace = (
+            MovementTraceRecord(state.movement_trace.record_id, list(state.movement_trace.points))
+            if state.movement_trace
+            else None
+        )
+        return CanvasStateRecord(
+            QPixmap(state.background),
+            [replace(record) for record in state.cycloids],
+            trace,
+        )

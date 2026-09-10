@@ -7,6 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
     QAction,
     QActionGroup,
@@ -24,8 +25,8 @@ from PyQt5.QtWidgets import (
     QUndoStack,
 )
 
-from cycloid_analyzer.canvas import CanvasView, CycloidRecord, MovementTraceRecord
-from cycloid_analyzer.commands import AddCycloidCommand, ReplaceMovementTraceCommand, UpdateCycloidCommand
+from cycloid_analyzer.canvas import CanvasStateRecord, CanvasView, CycloidRecord, MovementTraceRecord
+from cycloid_analyzer.commands import AddCycloidCommand, ReplaceCanvasStateCommand, ReplaceMovementTraceCommand, UpdateCycloidCommand
 from cycloid_analyzer.comparison import compare_paths
 from cycloid_analyzer.cycloid import CycloidParameters
 from cycloid_analyzer.image_tools import load_png_pixmap
@@ -51,6 +52,7 @@ class MainWindow(QMainWindow):
         self._build_parameter_panel()
         self._connect_signals()
         self._set_slider_values(self._default_parameters)
+        self._reset_metrics_display()
         self.statusBar().showMessage("Open a PNG image, choose Draw Cycloid or Trace Movement, then work directly on the canvas.")
 
     def _build_actions(self) -> None:
@@ -208,6 +210,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Movement trace updated.")
 
     def _handle_selection_changed(self, record: CycloidRecord | None) -> None:
+        self._reset_metrics_display()
         self.selection_label.setText(f"Selected cycloid: {record.record_id[:8]}" if record else "Selected cycloid: none")
         if record:
             self._set_slider_values(record.parameters)
@@ -262,6 +265,9 @@ class MainWindow(QMainWindow):
             phase_degrees=float(self.phase_slider.value()),
         )
 
+    def _reset_metrics_display(self) -> None:
+        self.metrics_label.setText("Average distance: —\nRMSE: —\nMax distance: —\nLength ratio: —\nSimilarity score: —")
+
     def compare_selected_cycloid(self) -> None:
         cycloid_points = self.canvas.selected_cycloid_points()
         trace_points = self.canvas.movement_trace_points()
@@ -300,7 +306,9 @@ class MainWindow(QMainWindow):
         except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
             QMessageBox.warning(self, "Unable to load demo assets", f"The bundled demo could not be loaded.\n\n{error}")
             return
-        self.canvas.set_background_pixmap(pixmap)
-        self.canvas.set_movement_trace(MovementTraceRecord("movement-trace", points))
-        self.undo_stack.clear()
+        before = self.canvas.capture_state()
+        after = CanvasStateRecord(QPixmap(pixmap), [], MovementTraceRecord("movement-trace", points))
+        self.undo_stack.push(ReplaceCanvasStateCommand(self.canvas, before, after, "Load demo"))
+        self._handle_selection_changed(None)
+        self._reset_metrics_display()
         self.statusBar().showMessage("Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.")

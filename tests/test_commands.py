@@ -86,9 +86,37 @@ class CommandTests(unittest.TestCase):
 
     def test_loading_demo_resets_undo_stack(self):
         window = MainWindow()
+        record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))
+        window.canvas.add_cycloid(record)
+        window.canvas._cycloid_items["c1"].setSelected(True)
+        QApplication.processEvents()
+        window.metrics_label.setText("Average distance: 1.23px")
+        window.radius_slider.setValue(60)
+
         window.load_demo_assets()
+
         self.assertEqual(len(window.canvas.movement_trace_points()), 14)
-        self.assertFalse(window.undo_stack.canUndo())
+        self.assertTrue(window.undo_stack.canUndo())
+        self.assertEqual(window.selection_label.text(), "Selected cycloid: none")
+        self.assertEqual(window.radius_slider.value(), 40)
+        self.assertEqual(window.frequency_slider.value(), 20)
+        self.assertEqual(window.phase_slider.value(), 0)
+        self.assertEqual(
+            window.metrics_label.text(),
+            "Average distance: —\nRMSE: —\nMax distance: —\nLength ratio: —\nSimilarity score: —",
+        )
+        window.close()
+
+    def test_selection_change_clears_stale_metrics(self):
+        window = MainWindow()
+        record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))
+        window.canvas.add_cycloid(record)
+        window.metrics_label.setText("Average distance: 1.23px")
+        window._handle_selection_changed(None)
+        self.assertEqual(
+            window.metrics_label.text(),
+            "Average distance: —\nRMSE: —\nMax distance: —\nLength ratio: —\nSimilarity score: —",
+        )
         window.close()
 
 

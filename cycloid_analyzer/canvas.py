@@ -31,6 +31,13 @@ class MovementTraceRecord:
     record_id: str
     points: list[Point]
 
+
+@dataclass
+class CanvasStateRecord:
+    background: QPixmap
+    cycloids: list[CycloidRecord]
+    movement_trace: MovementTraceRecord | None
+
 def build_path(points: list[Point]) -> QPainterPath:
     path = QPainterPath()
     if not points:
@@ -117,13 +124,29 @@ class CanvasView(QGraphicsView):
         self._current_parameters = parameters
 
     def set_background_pixmap(self, pixmap: QPixmap) -> None:
+        self.apply_state(CanvasStateRecord(pixmap, [], None))
+
+    def apply_state(self, state: CanvasStateRecord) -> None:
         self._clear_draft()
         for record_id in list(self._cycloid_items):
             self.remove_cycloid(record_id)
         self.set_movement_trace(None)
-        self._background_item.setPixmap(pixmap)
+        self._background_item.setPixmap(QPixmap(state.background))
+        for record in state.cycloids:
+            self.add_cycloid(record)
+        if state.movement_trace:
+            self.set_movement_trace(state.movement_trace)
         self._scene.setSceneRect(self._background_item.boundingRect())
         self.fitInView(self._background_item, Qt.KeepAspectRatio)
+
+    def capture_state(self) -> CanvasStateRecord:
+        trace = self.get_movement_trace_record()
+        trace_copy = MovementTraceRecord(trace.record_id, list(trace.points)) if trace else None
+        return CanvasStateRecord(
+            QPixmap(self._background_item.pixmap()),
+            [item.record for item in self._cycloid_items.values()],
+            trace_copy,
+        )
 
     def reset_zoom(self) -> None:
         if not self._background_item.pixmap().isNull():
@@ -200,12 +223,12 @@ class CanvasView(QGraphicsView):
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
             return
-        if self._mode == "draw" and event.button() == Qt.LeftButton:
+        if self._mode == "draw" and event.button() == Qt.LeftButton and self._background_contains(scene_pos):
             self._draft_start = scene_pos
             self._set_preview(build_path([(scene_pos.x(), scene_pos.y())]))
             event.accept()
             return
-        if self._mode == "trace" and event.button() == Qt.LeftButton:
+        if self._mode == "trace" and event.button() == Qt.LeftButton and self._background_contains(scene_pos):
             current = (scene_pos.x(), scene_pos.y())
             if not self._draft_points:
                 self._draft_points = [current]
@@ -272,10 +295,6 @@ class CanvasView(QGraphicsView):
                 self.movement_trace_drawn.emit(points)
             event.accept()
             return
-        if self._mode == "trace" and self._draft_points:
-            self._clear_draft()
-            event.accept()
-            return
         super().mouseReleaseEvent(event)
 
     def _set_preview(self, path: QPainterPath) -> None:
@@ -299,3 +318,7 @@ class CanvasView(QGraphicsView):
 
     def _notify_selection_changed(self) -> None:
         self.cycloid_selection_changed.emit(self.selected_cycloid_record())
+
+    def _background_contains(self, scene_pos: QPointF) -> bool:
+        pixmap = self._background_item.pixmap()
+        return not pixmap.isNull() and self._background_item.boundingRect().contains(scene_pos)
