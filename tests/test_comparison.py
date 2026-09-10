@@ -36,6 +36,13 @@ class ComparisonTests(unittest.TestCase):
             },
         )
 
+    def test_small_sample_count_is_clamped(self):
+        reference = [(0.0, 0.0), (10.0, 0.0)]
+        candidate = [(0.0, 0.0), (10.0, 0.0)]
+        metrics = compare_paths(reference, candidate, sample_count=1)
+        self.assertAlmostEqual(metrics["average_distance"], 0.0)
+        self.assertAlmostEqual(metrics["path_length_ratio"], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

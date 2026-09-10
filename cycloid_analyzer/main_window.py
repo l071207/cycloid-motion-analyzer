@@ -167,12 +167,14 @@ class MainWindow(QMainWindow):
         if file_path:
             self._load_png(file_path)
 
-    def _load_png(self, file_path: str) -> None:
+    def _load_png(self, file_path: str) -> bool:
         try:
             self.canvas.set_background_pixmap(load_png_pixmap(file_path))
             self.statusBar().showMessage(f"Loaded background image: {file_path}")
+            return True
         except ValueError as error:
             QMessageBox.warning(self, "Unable to open image", str(error))
+            return False
 
     def _handle_cycloid_drawn(self, start: tuple[float, float], end: tuple[float, float]) -> None:
         if start == end:
@@ -193,6 +195,8 @@ class MainWindow(QMainWindow):
         self.selection_label.setText(f"Selected cycloid: {record.record_id[:8]}" if record else "Selected cycloid: none")
         if record:
             self._set_slider_values(record.parameters)
+        else:
+            self._set_slider_values(self._default_parameters)
 
     def _begin_parameter_edit(self) -> None:
         if self._slider_update_guard:
@@ -268,7 +272,8 @@ class MainWindow(QMainWindow):
         image_path = samples_dir / "demo_background.png"
         trace_path = samples_dir / "demo_movement_trace.json"
 
-        self._load_png(str(image_path))
+        if not self._load_png(str(image_path)):
+            return
         try:
             with trace_path.open("r", encoding="utf-8") as file_handle:
                 payload = json.load(file_handle)

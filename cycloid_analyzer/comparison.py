@@ -19,6 +19,8 @@ def path_length(points: list[Point]) -> float:
 def resample_path(points: list[Point], sample_count: int = 120) -> list[Point]:
     if not points:
         return []
+    if sample_count <= 1:
+        return [points[0]]
     if len(points) == 1:
         return points * sample_count
 
@@ -31,9 +33,9 @@ def resample_path(points: list[Point], sample_count: int = 120) -> list[Point]:
         segment_lengths.append(segment_lengths[-1] + distance(points[index - 1], points[index]))
 
     result: list[Point] = []
+    segment_index = 1
     for target_index in range(sample_count):
         target_distance = (target_index / (sample_count - 1)) * total_length
-        segment_index = 1
         while segment_index < len(segment_lengths) and segment_lengths[segment_index] < target_distance:
             segment_index += 1
         if segment_index >= len(points):
@@ -64,6 +66,7 @@ def compare_paths(reference: list[Point], candidate: list[Point], sample_count: 
             "path_length_ratio": 0.0,
             "similarity_score": 0.0,
         }
+    sample_count = max(2, sample_count)
 
     ref = resample_path(reference, sample_count)
     cand = resample_path(candidate, sample_count)
@@ -82,4 +85,3 @@ def compare_paths(reference: list[Point], candidate: list[Point], sample_count: 
         "path_length_ratio": path_length_ratio,
         "similarity_score": similarity_score,
     }
-
