@@ -11,11 +11,11 @@ def load_png_pixmap(file_path: str) -> QPixmap:
         raise ValueError("Only PNG images are supported.")
 
     reader = QImageReader(str(path))
-    if reader.format().data().decode("ascii", errors="ignore").lower() != "png":
-        raise ValueError("The selected file is not a valid PNG image.")
+    reader.setFormat(b"png")
+    if not reader.canRead():
+        raise ValueError(reader.errorString() or "The selected file is not a valid PNG image.")
 
-    pixmap = QPixmap(str(path))
-    if pixmap.isNull():
+    image = reader.read()
+    if image.isNull():
         raise ValueError("The PNG image could not be loaded.")
-    return pixmap
-
+    return QPixmap.fromImage(image)

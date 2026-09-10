@@ -43,6 +43,7 @@ class MainWindow(QMainWindow):
         self._default_parameters = CycloidParameters()
         self._slider_update_guard = False
         self._edit_snapshot: CycloidRecord | None = None
+        self._edit_record_id: str | None = None
 
         self._build_actions()
         self._build_toolbar()
@@ -197,6 +198,7 @@ class MainWindow(QMainWindow):
         if self._slider_update_guard:
             return
         self._edit_snapshot = self.canvas.selected_cycloid_record()
+        self._edit_record_id = self._edit_snapshot.record_id if self._edit_snapshot else None
 
     def _on_slider_changed(self) -> None:
         parameters = self.current_parameters()
@@ -214,11 +216,12 @@ class MainWindow(QMainWindow):
     def _commit_parameter_edit(self) -> None:
         if not self._edit_snapshot:
             return
-        current = self.canvas.selected_cycloid_record()
+        current = self.canvas.cycloid_record(self._edit_record_id) if self._edit_record_id else None
         if current and current != self._edit_snapshot:
             self.undo_stack.push(UpdateCycloidCommand(self.canvas, self._edit_snapshot, current))
             self.statusBar().showMessage("Cycloid parameters updated.")
         self._edit_snapshot = None
+        self._edit_record_id = None
 
     def _set_slider_values(self, parameters: CycloidParameters) -> None:
         self._slider_update_guard = True
@@ -266,8 +269,12 @@ class MainWindow(QMainWindow):
         trace_path = samples_dir / "demo_movement_trace.json"
 
         self._load_png(str(image_path))
-        with trace_path.open("r", encoding="utf-8") as file_handle:
-            payload = json.load(file_handle)
-        points = [(float(point[0]), float(point[1])) for point in payload["points"]]
+        try:
+            with trace_path.open("r", encoding="utf-8") as file_handle:
+                payload = json.load(file_handle)
+            points = [(float(point[0]), float(point[1])) for point in payload["points"]]
+        except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            QMessageBox.warning(self, "Unable to load demo trace", f"The bundled movement trace could not be loaded.\n\n{error}")
+            return
         self.undo_stack.push(ReplaceMovementTraceCommand(self.canvas, MovementTraceRecord("movement-trace", points)))
         self.statusBar().showMessage("Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.")

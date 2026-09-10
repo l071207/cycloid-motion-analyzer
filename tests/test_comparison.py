@@ -23,6 +23,19 @@ class ComparisonTests(unittest.TestCase):
         self.assertAlmostEqual(metrics["path_length_ratio"], 1.0)
         self.assertLess(metrics["similarity_score"], 1.0)
 
+    def test_short_paths_return_zeroed_metrics(self):
+        metrics = compare_paths([(0.0, 0.0)], [(1.0, 1.0)])
+        self.assertEqual(
+            metrics,
+            {
+                "average_distance": 0.0,
+                "rmse": 0.0,
+                "max_distance": 0.0,
+                "path_length_ratio": 0.0,
+                "similarity_score": 0.0,
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

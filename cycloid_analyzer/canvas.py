@@ -126,11 +126,14 @@ class CanvasView(QGraphicsView):
             self.resetTransform()
 
     def add_cycloid(self, record: CycloidRecord) -> None:
+        existing = self._cycloid_items.get(record.record_id)
+        was_selected = existing.isSelected() if existing else False
         self.remove_cycloid(record.record_id)
         item = CycloidPathItem(record)
         item.setZValue(2)
         self._cycloid_items[record.record_id] = item
         self._scene.addItem(item)
+        item.setSelected(was_selected)
 
     def remove_cycloid(self, record_id: str) -> None:
         item = self._cycloid_items.pop(record_id, None)
@@ -142,8 +145,14 @@ class CanvasView(QGraphicsView):
         if item is None:
             self.add_cycloid(record)
             return
+        was_selected = item.isSelected()
         item.record = record
         item.refresh()
+        item.setSelected(was_selected)
+
+    def cycloid_record(self, record_id: str) -> CycloidRecord | None:
+        item = self._cycloid_items.get(record_id)
+        return item.record if item else None
 
     def selected_cycloid_record(self) -> CycloidRecord | None:
         for item in self._scene.selectedItems():
