@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from dataclasses import replace
+
+from PyQt5.QtWidgets import QUndoCommand
+
+from cycloid_analyzer.canvas import CycloidRecord, MovementTraceRecord
+
+
+class AddCycloidCommand(QUndoCommand):
+    def __init__(self, canvas, record: CycloidRecord):
+        super().__init__("Add cycloid")
+        self._canvas = canvas
+        self._record = record
+
+    def redo(self) -> None:
+        self._canvas.add_cycloid(self._record)
+
+    def undo(self) -> None:
+        self._canvas.remove_cycloid(self._record.record_id)
+
+
+class UpdateCycloidCommand(QUndoCommand):
+    def __init__(self, canvas, before: CycloidRecord, after: CycloidRecord):
+        super().__init__("Update cycloid")
+        self._canvas = canvas
+        self._before = replace(before)
+        self._after = replace(after)
+
+    def redo(self) -> None:
+        self._canvas.update_cycloid(self._after)
+
+    def undo(self) -> None:
+        self._canvas.update_cycloid(self._before)
+
+
+class ReplaceMovementTraceCommand(QUndoCommand):
+    def __init__(self, canvas, new_trace: MovementTraceRecord):
+        super().__init__("Trace movement")
+        self._canvas = canvas
+        self._new_trace = new_trace
+        self._previous_trace = canvas.get_movement_trace_record()
+
+    def redo(self) -> None:
+        self._canvas.set_movement_trace(self._new_trace)
+
+    def undo(self) -> None:
+        self._canvas.set_movement_trace(self._previous_trace)
+
