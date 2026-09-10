@@ -183,16 +183,20 @@ class MainWindow(QMainWindow):
     def open_png_image(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(self, "Open PNG image", "", "PNG Images (*.png)")
         if file_path:
-            self._load_png(file_path)
+            pixmap = self._load_png(file_path)
+            if pixmap is not None:
+                self._replace_canvas_state(
+                    CanvasStateRecord(QPixmap(pixmap), [], None),
+                    "Open PNG image",
+                    f"Loaded background image: {file_path}",
+                )
 
-    def _load_png(self, file_path: str) -> bool:
+    def _load_png(self, file_path: str) -> QPixmap | None:
         try:
-            self.canvas.set_background_pixmap(load_png_pixmap(file_path))
-            self.statusBar().showMessage(f"Loaded background image: {file_path}")
-            return True
+            return load_png_pixmap(file_path)
         except ValueError as error:
             QMessageBox.warning(self, "Unable to open image", str(error))
-            return False
+            return None
 
     def _handle_cycloid_drawn(self, start: tuple[float, float], end: tuple[float, float]) -> None:
         if start == end:
@@ -268,6 +272,23 @@ class MainWindow(QMainWindow):
     def _reset_metrics_display(self) -> None:
         self.metrics_label.setText("Average distance: —\nRMSE: —\nMax distance: —\nLength ratio: —\nSimilarity score: —")
 
+    def _sync_ui_to_canvas_state(self) -> None:
+        self._handle_selection_changed(self.canvas.selected_cycloid_record())
+
+    def _replace_canvas_state(self, after: CanvasStateRecord, label: str, status_message: str | None = None) -> None:
+        before = self.canvas.capture_state()
+        self.undo_stack.push(
+            ReplaceCanvasStateCommand(
+                self.canvas,
+                before,
+                after,
+                label,
+                on_applied=self._sync_ui_to_canvas_state,
+            )
+        )
+        if status_message:
+            self.statusBar().showMessage(status_message)
+
     def compare_selected_cycloid(self) -> None:
         cycloid_points = self.canvas.selected_cycloid_points()
         trace_points = self.canvas.movement_trace_points()
@@ -306,9 +327,8 @@ class MainWindow(QMainWindow):
         except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
             QMessageBox.warning(self, "Unable to load demo assets", f"The bundled demo could not be loaded.\n\n{error}")
             return
-        before = self.canvas.capture_state()
-        after = CanvasStateRecord(QPixmap(pixmap), [], MovementTraceRecord("movement-trace", points))
-        self.undo_stack.push(ReplaceCanvasStateCommand(self.canvas, before, after, "Load demo"))
-        self._handle_selection_changed(None)
-        self._reset_metrics_display()
-        self.statusBar().showMessage("Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.")
+        self._replace_canvas_state(
+            CanvasStateRecord(QPixmap(pixmap), [], MovementTraceRecord("movement-trace", points)),
+            "Load demo",
+            "Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.",
+        )

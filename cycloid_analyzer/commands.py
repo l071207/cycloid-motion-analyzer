@@ -54,17 +54,22 @@ class ReplaceMovementTraceCommand(QUndoCommand):
 
 
 class ReplaceCanvasStateCommand(QUndoCommand):
-    def __init__(self, canvas, before: CanvasStateRecord, after: CanvasStateRecord, label: str = "Replace canvas"):
+    def __init__(self, canvas, before: CanvasStateRecord, after: CanvasStateRecord, label: str = "Replace canvas", on_applied=None):
         super().__init__(label)
         self._canvas = canvas
         self._before = self._copy_state(before)
         self._after = self._copy_state(after)
+        self._on_applied = on_applied
 
     def redo(self) -> None:
         self._canvas.apply_state(self._after)
+        if self._on_applied:
+            self._on_applied()
 
     def undo(self) -> None:
         self._canvas.apply_state(self._before)
+        if self._on_applied:
+            self._on_applied()
 
     def _copy_state(self, state: CanvasStateRecord) -> CanvasStateRecord:
         trace = (

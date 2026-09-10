@@ -105,6 +105,10 @@ class CommandTests(unittest.TestCase):
             window.metrics_label.text(),
             "Average distance: —\nRMSE: —\nMax distance: —\nLength ratio: —\nSimilarity score: —",
         )
+        window.undo_stack.undo()
+        self.assertEqual(window.selection_label.text(), "Selected cycloid: c1")
+        self.assertEqual(window.radius_slider.value(), 25)
+        self.assertEqual(len(window.canvas.movement_trace_points()), 0)
         window.close()
 
     def test_selection_change_clears_stale_metrics(self):
