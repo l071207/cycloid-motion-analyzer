@@ -301,5 +301,6 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Unable to load demo assets", f"The bundled demo could not be loaded.\n\n{error}")
             return
         self.canvas.set_background_pixmap(pixmap)
-        self.undo_stack.push(ReplaceMovementTraceCommand(self.canvas, MovementTraceRecord("movement-trace", points)))
+        self.canvas.set_movement_trace(MovementTraceRecord("movement-trace", points))
+        self.undo_stack.clear()
         self.statusBar().showMessage("Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.")

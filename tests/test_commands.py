@@ -84,6 +84,13 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 25.0)
         window.close()
 
+    def test_loading_demo_resets_undo_stack(self):
+        window = MainWindow()
+        window.load_demo_assets()
+        self.assertEqual(len(window.canvas.movement_trace_points()), 14)
+        self.assertFalse(window.undo_stack.canUndo())
+        window.close()
+
 
 if __name__ == "__main__":
     unittest.main()

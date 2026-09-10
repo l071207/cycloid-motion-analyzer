@@ -250,11 +250,6 @@ class CanvasView(QGraphicsView):
             self.unsetCursor()
             event.accept()
             return
-        if self._mode == "draw" and self._draft_start is not None and event.button() != Qt.LeftButton:
-            self._draft_start = None
-            self._clear_preview()
-            event.accept()
-            return
         if self._mode == "draw" and self._draft_start is not None and event.button() == Qt.LeftButton:
             start = (self._draft_start.x(), self._draft_start.y())
             end = (scene_pos.x(), scene_pos.y())
