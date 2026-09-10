@@ -7,7 +7,7 @@ Cycloid Motion Analyzer is a Windows-friendly PyQt5 desktop application for draw
 - Load PNG movement images as a zoomable, pannable background
 - Draw cycloid paths directly on top of the image with real-time preview
 - Adjust cycloid radius, frequency, and phase with live sliders
-- Select and reposition existing cycloid paths
+- Select existing cycloid paths and refine them with live parameter controls
 - Trace a movement path from the image and compare it to a selected cycloid
 - Undo and redo drawing, trace replacement, and parameter edits
 - Load bundled demo assets for a quick first run

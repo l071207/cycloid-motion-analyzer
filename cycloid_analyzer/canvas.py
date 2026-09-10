@@ -237,6 +237,9 @@ class CanvasView(QGraphicsView):
             event.accept()
             return
         if self._mode == "trace" and self._draft_points and event.button() == Qt.LeftButton:
+            current = (scene_pos.x(), scene_pos.y())
+            if not self._draft_points or current != self._draft_points[-1]:
+                self._draft_points.append(current)
             if len(self._draft_points) == 1:
                 self._draft_points.append((scene_pos.x(), scene_pos.y()))
             points = list(self._draft_points)

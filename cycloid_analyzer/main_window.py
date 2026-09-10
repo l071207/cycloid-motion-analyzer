@@ -269,5 +269,5 @@ class MainWindow(QMainWindow):
         with trace_path.open("r", encoding="utf-8") as file_handle:
             payload = json.load(file_handle)
         points = [(float(point[0]), float(point[1])) for point in payload["points"]]
-        self.canvas.set_movement_trace(MovementTraceRecord("movement-trace", points))
+        self.undo_stack.push(ReplaceMovementTraceCommand(self.canvas, MovementTraceRecord("movement-trace", points)))
         self.statusBar().showMessage("Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.")

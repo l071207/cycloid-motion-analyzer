@@ -11,6 +11,7 @@ class ComparisonTests(unittest.TestCase):
         self.assertAlmostEqual(metrics["rmse"], 0.0)
         self.assertAlmostEqual(metrics["max_distance"], 0.0)
         self.assertAlmostEqual(metrics["path_length_ratio"], 1.0)
+        self.assertAlmostEqual(metrics["similarity_score"], 1.0)
 
     def test_offset_paths_produce_non_zero_distances(self):
         reference = [(0.0, 0.0), (10.0, 0.0)]
@@ -19,8 +20,9 @@ class ComparisonTests(unittest.TestCase):
         self.assertGreater(metrics["average_distance"], 0.0)
         self.assertGreater(metrics["rmse"], 0.0)
         self.assertGreater(metrics["max_distance"], 0.0)
+        self.assertAlmostEqual(metrics["path_length_ratio"], 1.0)
+        self.assertLess(metrics["similarity_score"], 1.0)
 
 
 if __name__ == "__main__":
     unittest.main()
-
