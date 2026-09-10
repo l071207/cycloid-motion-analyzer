@@ -150,6 +150,11 @@ class MainWindow(QMainWindow):
         slider.setValue(value)
         return slider
 
+    def _samples_dir(self) -> Path:
+        if hasattr(sys, "_MEIPASS"):
+            return Path(sys._MEIPASS) / "cycloid_analyzer" / "samples"
+        return Path(__file__).resolve().parent / "samples"
+
     def _labeled_control(self, slider: QSlider, value_label: QLabel) -> QWidget:
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -270,8 +275,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Comparison metrics updated.")
 
     def load_demo_assets(self) -> None:
-        base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-        samples_dir = base_dir / "cycloid_analyzer" / "samples" if hasattr(sys, "_MEIPASS") else base_dir / "samples"
+        samples_dir = self._samples_dir()
         image_path = samples_dir / "demo_background.png"
         trace_path = samples_dir / "demo_movement_trace.json"
 

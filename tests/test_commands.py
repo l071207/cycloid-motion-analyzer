@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QApplication, QUndoStack
 from cycloid_analyzer.commands import AddCycloidCommand, ReplaceMovementTraceCommand, UpdateCycloidCommand
 from cycloid_analyzer.canvas import CycloidRecord, MovementTraceRecord
 from cycloid_analyzer.cycloid import CycloidParameters
+from cycloid_analyzer.main_window import MainWindow
 
 
 class FakeCanvas:
@@ -66,6 +67,22 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(canvas.trace.points[0], (2.0, 2.0))
         stack.undo()
         self.assertEqual(canvas.trace.points[0], (0.0, 0.0))
+
+    def test_live_parameter_edit_is_undoable(self):
+        window = MainWindow()
+        record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))
+        window.canvas.add_cycloid(record)
+        window.canvas._cycloid_items["c1"].setSelected(True)
+        QApplication.processEvents()
+
+        window._begin_parameter_edit()
+        window.radius_slider.setValue(60)
+        window._commit_parameter_edit()
+
+        self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 60.0)
+        window.undo_stack.undo()
+        self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 25.0)
+        window.close()
 
 
 if __name__ == "__main__":

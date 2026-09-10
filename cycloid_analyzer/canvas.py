@@ -181,6 +181,9 @@ class CanvasView(QGraphicsView):
         return self._movement_trace_item.record.points if self._movement_trace_item else []
 
     def wheelEvent(self, event) -> None:
+        if event.angleDelta().y() == 0:
+            event.ignore()
+            return
         factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
         self.scale(factor, factor)
 
