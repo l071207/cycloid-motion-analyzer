@@ -76,6 +76,12 @@ The repository includes:
 ### Build only the executable
 
 ```powershell
+python -m pip install -r requirements.txt
+```
+
+Then run:
+
+```powershell
 pyinstaller --noconfirm cycloid_motion_analyzer.spec
 ```
 

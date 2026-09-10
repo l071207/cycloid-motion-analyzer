@@ -84,7 +84,20 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 25.0)
         window.close()
 
-    def test_loading_demo_resets_undo_stack(self):
+    def test_programmatic_parameter_change_is_not_undoable(self):
+        window = MainWindow()
+        record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))
+        window.canvas.add_cycloid(record)
+        window.canvas._cycloid_items["c1"].setSelected(True)
+        QApplication.processEvents()
+
+        window.radius_slider.setValue(60)
+
+        self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 60.0)
+        self.assertFalse(window.undo_stack.canUndo())
+        window.close()
+
+    def test_loading_demo_is_undoable_and_resets_panel(self):
         window = MainWindow()
         record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))
         window.canvas.add_cycloid(record)

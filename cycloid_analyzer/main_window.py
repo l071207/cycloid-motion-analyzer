@@ -163,8 +163,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(messages[mode])
 
     def _samples_dir(self) -> Path:
-        if hasattr(sys, "_MEIPASS"):
-            return Path(sys._MEIPASS) / "cycloid_analyzer" / "samples"
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            return Path(meipass) / "cycloid_analyzer" / "samples"
         return Path(__file__).resolve().parent / "samples"
 
     def _labeled_control(self, slider: QSlider, value_label: QLabel) -> QWidget:
@@ -275,6 +276,10 @@ class MainWindow(QMainWindow):
     def _sync_ui_to_canvas_state(self) -> None:
         self._handle_selection_changed(self.canvas.selected_cycloid_record())
 
+    def _sync_ui_after_canvas_state_redo(self) -> None:
+        self.canvas.reset_zoom()
+        self._sync_ui_to_canvas_state()
+
     def _replace_canvas_state(self, after: CanvasStateRecord, label: str, status_message: str | None = None) -> None:
         before = self.canvas.capture_state()
         self.undo_stack.push(
@@ -283,7 +288,8 @@ class MainWindow(QMainWindow):
                 before,
                 after,
                 label,
-                on_applied=self._sync_ui_to_canvas_state,
+                on_redo_applied=self._sync_ui_after_canvas_state_redo,
+                on_undo_applied=self._sync_ui_to_canvas_state,
             )
         )
         if status_message:

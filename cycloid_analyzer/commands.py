@@ -54,24 +54,34 @@ class ReplaceMovementTraceCommand(QUndoCommand):
 
 
 class ReplaceCanvasStateCommand(QUndoCommand):
-    def __init__(self, canvas, before: CanvasStateRecord, after: CanvasStateRecord, label: str = "Replace canvas", on_applied=None):
+    def __init__(
+        self,
+        canvas,
+        before: CanvasStateRecord,
+        after: CanvasStateRecord,
+        label: str = "Replace canvas",
+        on_redo_applied=None,
+        on_undo_applied=None,
+        restore_after_selection: bool = False,
+    ):
         super().__init__(label)
         self._canvas = canvas
-        self._before = self._copy_state(before)
-        self._after = self._copy_state(after)
-        self._on_applied = on_applied
+        self._before = self._copy_state(before, include_selection_ids=True)
+        self._after = self._copy_state(after, include_selection_ids=restore_after_selection)
+        self._on_redo_applied = on_redo_applied
+        self._on_undo_applied = on_undo_applied
 
     def redo(self) -> None:
         self._canvas.apply_state(self._after)
-        if self._on_applied:
-            self._on_applied()
+        if self._on_redo_applied:
+            self._on_redo_applied()
 
     def undo(self) -> None:
         self._canvas.apply_state(self._before)
-        if self._on_applied:
-            self._on_applied()
+        if self._on_undo_applied:
+            self._on_undo_applied()
 
-    def _copy_state(self, state: CanvasStateRecord) -> CanvasStateRecord:
+    def _copy_state(self, state: CanvasStateRecord, include_selection_ids: bool) -> CanvasStateRecord:
         trace = (
             MovementTraceRecord(state.movement_trace.record_id, list(state.movement_trace.points))
             if state.movement_trace
@@ -81,5 +91,5 @@ class ReplaceCanvasStateCommand(QUndoCommand):
             QPixmap(state.background),
             [replace(record) for record in state.cycloids],
             trace,
-            list(state.selected_cycloid_ids),
+            list(state.selected_cycloid_ids) if include_selection_ids else [],
         )
