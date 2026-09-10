@@ -186,7 +186,7 @@ class MainWindow(QMainWindow):
             pixmap = self._load_png(file_path)
             if pixmap is not None:
                 self._replace_canvas_state(
-                    CanvasStateRecord(QPixmap(pixmap), [], None),
+                    CanvasStateRecord(QPixmap(pixmap), [], None, []),
                     "Open PNG image",
                     f"Loaded background image: {file_path}",
                 )
@@ -328,7 +328,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Unable to load demo assets", f"The bundled demo could not be loaded.\n\n{error}")
             return
         self._replace_canvas_state(
-            CanvasStateRecord(QPixmap(pixmap), [], MovementTraceRecord("movement-trace", points)),
+            CanvasStateRecord(QPixmap(pixmap), [], MovementTraceRecord("movement-trace", points), []),
             "Load demo",
             "Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.",
         )

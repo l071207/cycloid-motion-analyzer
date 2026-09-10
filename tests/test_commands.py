@@ -107,7 +107,7 @@ class CommandTests(unittest.TestCase):
         )
         window.undo_stack.undo()
         self.assertEqual(window.selection_label.text(), "Selected cycloid: c1")
-        self.assertEqual(window.radius_slider.value(), 25)
+        self.assertEqual(window.radius_slider.value(), 60)
         self.assertEqual(len(window.canvas.movement_trace_points()), 0)
         window.close()
 

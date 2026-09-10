@@ -37,6 +37,7 @@ class CanvasStateRecord:
     background: QPixmap
     cycloids: list[CycloidRecord]
     movement_trace: MovementTraceRecord | None
+    selected_cycloid_ids: list[str]
 
 def build_path(points: list[Point]) -> QPainterPath:
     path = QPainterPath()
@@ -124,7 +125,7 @@ class CanvasView(QGraphicsView):
         self._current_parameters = parameters
 
     def set_background_pixmap(self, pixmap: QPixmap) -> None:
-        self.apply_state(CanvasStateRecord(pixmap, [], None))
+        self.apply_state(CanvasStateRecord(pixmap, [], None, []))
 
     def apply_state(self, state: CanvasStateRecord) -> None:
         self._clear_draft()
@@ -134,6 +135,10 @@ class CanvasView(QGraphicsView):
         self._background_item.setPixmap(QPixmap(state.background))
         for record in state.cycloids:
             self.add_cycloid(record)
+        for record_id in state.selected_cycloid_ids:
+            item = self._cycloid_items.get(record_id)
+            if item:
+                item.setSelected(True)
         if state.movement_trace:
             self.set_movement_trace(state.movement_trace)
         self._scene.setSceneRect(self._background_item.boundingRect())
@@ -146,6 +151,7 @@ class CanvasView(QGraphicsView):
             QPixmap(self._background_item.pixmap()),
             [item.record for item in self._cycloid_items.values()],
             trace_copy,
+            [record.record_id for record in [self.selected_cycloid_record()] if record],
         )
 
     def reset_zoom(self) -> None:

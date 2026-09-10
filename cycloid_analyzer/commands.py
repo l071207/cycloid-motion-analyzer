@@ -81,4 +81,5 @@ class ReplaceCanvasStateCommand(QUndoCommand):
             QPixmap(state.background),
             [replace(record) for record in state.cycloids],
             trace,
+            list(state.selected_cycloid_ids),
         )
