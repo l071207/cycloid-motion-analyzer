@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
@@ -221,8 +222,9 @@ class MainWindow(QMainWindow):
         if not self._edit_snapshot:
             return
         current = self.canvas.cycloid_record(self._edit_record_id) if self._edit_record_id else None
+        snapshot = self._edit_snapshot
         if current and current != self._edit_snapshot:
-            self.undo_stack.push(UpdateCycloidCommand(self.canvas, self._edit_snapshot, current))
+            self.undo_stack.push(UpdateCycloidCommand(self.canvas, snapshot, current))
             self.statusBar().showMessage("Cycloid parameters updated.")
         self._edit_snapshot = None
         self._edit_record_id = None
@@ -268,7 +270,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Comparison metrics updated.")
 
     def load_demo_assets(self) -> None:
-        samples_dir = Path(__file__).resolve().parent / "samples"
+        base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+        samples_dir = base_dir / "cycloid_analyzer" / "samples" if hasattr(sys, "_MEIPASS") else base_dir / "samples"
         image_path = samples_dir / "demo_background.png"
         trace_path = samples_dir / "demo_movement_trace.json"
 
