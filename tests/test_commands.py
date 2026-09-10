@@ -1,6 +1,6 @@
 import unittest
 
-from PyQt5.QtWidgets import QUndoStack
+from PyQt5.QtWidgets import QApplication, QUndoStack
 
 from cycloid_analyzer.commands import AddCycloidCommand, ReplaceMovementTraceCommand, UpdateCycloidCommand
 from cycloid_analyzer.canvas import CycloidRecord, MovementTraceRecord
@@ -29,6 +29,10 @@ class FakeCanvas:
 
 
 class CommandTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QApplication.instance() or QApplication([])
+
     def test_add_cycloid_command_round_trip(self):
         canvas = FakeCanvas()
         stack = QUndoStack()
@@ -63,4 +67,3 @@ class CommandTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

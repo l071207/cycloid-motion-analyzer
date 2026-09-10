@@ -254,7 +254,8 @@ class CanvasView(QGraphicsView):
             points = list(self._draft_points)
             self._draft_points = []
             self._clear_preview()
-            self.movement_trace_drawn.emit(points)
+            if any(point != points[0] for point in points[1:]):
+                self.movement_trace_drawn.emit(points)
             event.accept()
             return
         super().mouseReleaseEvent(event)
