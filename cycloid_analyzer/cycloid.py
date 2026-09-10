@@ -21,7 +21,11 @@ class CycloidParameters:
 
     @property
     def point_distance_ratio(self) -> float:
-        return 1.35 if self.curve_type == "prolate" else 1.0
+        if self.curve_type == "prolate":
+            return 1.35
+        if self.curve_type == "curtate":
+            return 0.65
+        return 1.0
 
 
 def generate_cycloid_points(start: Point, end: Point, parameters: CycloidParameters) -> list[Point]:

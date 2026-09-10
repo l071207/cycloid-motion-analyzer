@@ -116,6 +116,7 @@ class MainWindow(QMainWindow):
         self.curve_type_combo = QComboBox(self)
         self.curve_type_combo.addItem("Standard", "standard")
         self.curve_type_combo.addItem("Prolate", "prolate")
+        self.curve_type_combo.addItem("Curtate", "curtate")
 
         self.radius_value = QLabel()
         self.frequency_value = QLabel()

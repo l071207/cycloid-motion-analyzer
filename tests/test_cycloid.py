@@ -29,6 +29,14 @@ class CycloidTests(unittest.TestCase):
         self.assertFalse(any(points[index + 1][0] < points[index][0] for points in [standard] for index in range(len(points) - 1)))
         self.assertTrue(any(prolate[index + 1][0] < prolate[index][0] for index in range(len(prolate) - 1)))
 
+    def test_curtate_cycloid_has_smaller_vertical_excursion_than_standard(self):
+        standard = generate_cycloid_points((0.0, 0.0), (100.0, 0.0), CycloidParameters(radius=20.0, curve_type="standard"))
+        curtate = generate_cycloid_points((0.0, 0.0), (100.0, 0.0), CycloidParameters(radius=20.0, curve_type="curtate"))
+        standard_peak = max(point[1] for point in standard) - min(point[1] for point in standard)
+        curtate_peak = max(point[1] for point in curtate) - min(point[1] for point in curtate)
+        self.assertLess(curtate_peak, standard_peak)
+        self.assertFalse(any(curtate[index + 1][0] < curtate[index][0] for index in range(len(curtate) - 1)))
+
 
 if __name__ == "__main__":
     unittest.main()
