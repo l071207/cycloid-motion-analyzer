@@ -279,14 +279,14 @@ class MainWindow(QMainWindow):
         image_path = samples_dir / "demo_background.png"
         trace_path = samples_dir / "demo_movement_trace.json"
 
-        if not self._load_png(str(image_path)):
-            return
         try:
+            pixmap = load_png_pixmap(str(image_path))
             with trace_path.open("r", encoding="utf-8") as file_handle:
                 payload = json.load(file_handle)
             points = [(float(point[0]), float(point[1])) for point in payload["points"]]
         except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-            QMessageBox.warning(self, "Unable to load demo trace", f"The bundled movement trace could not be loaded.\n\n{error}")
+            QMessageBox.warning(self, "Unable to load demo assets", f"The bundled demo could not be loaded.\n\n{error}")
             return
+        self.canvas.set_background_pixmap(pixmap)
         self.undo_stack.push(ReplaceMovementTraceCommand(self.canvas, MovementTraceRecord("movement-trace", points)))
         self.statusBar().showMessage("Bundled demo loaded. Draw or adjust cycloids on top of the sample movement frame.")

@@ -75,9 +75,9 @@ class CommandTests(unittest.TestCase):
         window.canvas._cycloid_items["c1"].setSelected(True)
         QApplication.processEvents()
 
-        window._begin_parameter_edit()
+        window.radius_slider.sliderPressed.emit()
         window.radius_slider.setValue(60)
-        window._commit_parameter_edit()
+        window.radius_slider.sliderReleased.emit()
 
         self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 60.0)
         window.undo_stack.undo()
