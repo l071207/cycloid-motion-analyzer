@@ -97,6 +97,21 @@ class CommandTests(unittest.TestCase):
         self.assertFalse(window.undo_stack.canUndo())
         window.close()
 
+    def test_curve_type_change_is_undoable(self):
+        window = MainWindow()
+        record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(curve_type="standard"))
+        window.canvas.add_cycloid(record)
+        window.canvas._cycloid_items["c1"].setSelected(True)
+        QApplication.processEvents()
+
+        window.curve_type_combo.setCurrentIndex(window.curve_type_combo.findData("prolate"))
+
+        self.assertEqual(window.canvas.cycloid_record("c1").parameters.curve_type, "prolate")
+        self.assertTrue(window.undo_stack.canUndo())
+        window.undo_stack.undo()
+        self.assertEqual(window.canvas.cycloid_record("c1").parameters.curve_type, "standard")
+        window.close()
+
     def test_loading_demo_is_undoable_and_resets_panel(self):
         window = MainWindow()
         record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))

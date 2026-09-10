@@ -11,6 +11,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
     QAction,
     QActionGroup,
+    QComboBox,
     QFileDialog,
     QLabel,
     QMainWindow,
@@ -112,10 +113,14 @@ class MainWindow(QMainWindow):
         self.radius_slider = self._build_slider(5, 120, 40)
         self.frequency_slider = self._build_slider(10, 60, 20)
         self.phase_slider = self._build_slider(0, 360, 0)
+        self.curve_type_combo = QComboBox(self)
+        self.curve_type_combo.addItem("Standard", "standard")
+        self.curve_type_combo.addItem("Prolate", "prolate")
 
         self.radius_value = QLabel()
         self.frequency_value = QLabel()
         self.phase_value = QLabel()
+        self.curve_type_value = QLabel()
         self.selection_label = QLabel("Selected cycloid: none")
 
         compare_button = QPushButton("Compare selected cycloid to movement trace")
@@ -127,6 +132,7 @@ class MainWindow(QMainWindow):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         form = QFormLayout()
+        form.addRow("Type", self._labeled_control(self.curve_type_combo, self.curve_type_value))
         form.addRow("Radius", self._labeled_control(self.radius_slider, self.radius_value))
         form.addRow("Frequency", self._labeled_control(self.frequency_slider, self.frequency_value))
         form.addRow("Phase", self._labeled_control(self.phase_slider, self.phase_value))
@@ -145,6 +151,7 @@ class MainWindow(QMainWindow):
             slider.sliderPressed.connect(self._begin_parameter_edit)
             slider.valueChanged.connect(self._on_slider_changed)
             slider.sliderReleased.connect(self._commit_parameter_edit)
+        self.curve_type_combo.currentIndexChanged.connect(self._on_curve_type_changed)
 
     def _build_slider(self, minimum: int, maximum: int, value: int) -> QSlider:
         slider = QSlider(Qt.Horizontal, self)
@@ -168,11 +175,11 @@ class MainWindow(QMainWindow):
             return Path(meipass) / "cycloid_analyzer" / "samples"
         return Path(__file__).resolve().parent / "samples"
 
-    def _labeled_control(self, slider: QSlider, value_label: QLabel) -> QWidget:
+    def _labeled_control(self, control: QWidget, value_label: QLabel) -> QWidget:
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(slider)
+        layout.addWidget(control)
         layout.addWidget(value_label)
         return container
 
@@ -254,10 +261,12 @@ class MainWindow(QMainWindow):
         self.radius_slider.setValue(int(round(parameters.radius)))
         self.frequency_slider.setValue(int(round(parameters.frequency * 10)))
         self.phase_slider.setValue(int(round(parameters.phase_degrees)))
+        self.curve_type_combo.setCurrentIndex(max(0, self.curve_type_combo.findData(parameters.curve_type)))
         self._slider_update_guard = False
         self._sync_parameter_display(self.current_parameters())
 
     def _sync_parameter_display(self, parameters: CycloidParameters) -> None:
+        self.curve_type_value.setText(parameters.curve_type.capitalize())
         self.radius_value.setText(f"{parameters.radius:.0f}px")
         self.frequency_value.setText(f"{parameters.frequency:.1f} turns")
         self.phase_value.setText(f"{parameters.phase_degrees:.0f}°")
@@ -268,7 +277,19 @@ class MainWindow(QMainWindow):
             radius=float(self.radius_slider.value()),
             frequency=float(self.frequency_slider.value()) / 10.0,
             phase_degrees=float(self.phase_slider.value()),
+            curve_type=str(self.curve_type_combo.currentData()),
         )
+
+    def _on_curve_type_changed(self) -> None:
+        parameters = self.current_parameters()
+        self._sync_parameter_display(parameters)
+        if self._slider_update_guard:
+            return
+        selected = self.canvas.selected_cycloid_record()
+        if not selected or selected.parameters.curve_type == parameters.curve_type:
+            return
+        self.undo_stack.push(UpdateCycloidCommand(self.canvas, selected, replace(selected, parameters=parameters)))
+        self.statusBar().showMessage(f"{parameters.curve_type.capitalize()} cycloid selected.")
 
     def _reset_metrics_display(self) -> None:
         self.metrics_label.setText("Average distance: —\nRMSE: —\nMax distance: —\nLength ratio: —\nSimilarity score: —")

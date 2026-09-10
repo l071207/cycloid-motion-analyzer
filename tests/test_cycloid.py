@@ -23,7 +23,12 @@ class CycloidTests(unittest.TestCase):
         self.assertEqual(len(slow), len(fast))
         self.assertNotEqual(slow[10], fast[10])
 
+    def test_prolate_cycloid_creates_looping_profile(self):
+        standard = generate_cycloid_points((0.0, 0.0), (100.0, 0.0), CycloidParameters(curve_type="standard"))
+        prolate = generate_cycloid_points((0.0, 0.0), (100.0, 0.0), CycloidParameters(curve_type="prolate"))
+        self.assertFalse(any(points[index + 1][0] < points[index][0] for points in [standard] for index in range(len(points) - 1)))
+        self.assertTrue(any(prolate[index + 1][0] < prolate[index][0] for index in range(len(prolate) - 1)))
+
 
 if __name__ == "__main__":
     unittest.main()
-

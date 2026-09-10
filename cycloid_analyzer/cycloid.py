@@ -12,11 +12,16 @@ class CycloidParameters:
     radius: float = 40.0
     frequency: float = 2.0
     phase_degrees: float = 0.0
+    curve_type: str = "standard"
     samples: int = 240
 
     @property
     def phase_radians(self) -> float:
         return (self.phase_degrees / 180.0) * pi
+
+    @property
+    def point_distance_ratio(self) -> float:
+        return 1.35 if self.curve_type == "prolate" else 1.0
 
 
 def generate_cycloid_points(start: Point, end: Point, parameters: CycloidParameters) -> list[Point]:
@@ -30,6 +35,7 @@ def generate_cycloid_points(start: Point, end: Point, parameters: CycloidParamet
     t_end = max(0.25, parameters.frequency) * (2.0 * pi)
     phase = parameters.phase_radians
     theta = atan2(dy, dx)
+    point_distance_ratio = parameters.point_distance_ratio
 
     raw_points: list[Point] = []
     min_x = float("inf")
@@ -37,8 +43,8 @@ def generate_cycloid_points(start: Point, end: Point, parameters: CycloidParamet
     for index in range(sample_count):
         progress = index / (sample_count - 1)
         t = progress * t_end
-        x = t - sin(t + phase)
-        y = (1.0 - cos(t + phase)) - (1.0 - cos(phase))
+        x = t - (point_distance_ratio * sin(t + phase))
+        y = (1.0 - (point_distance_ratio * cos(t + phase))) - (1.0 - (point_distance_ratio * cos(phase)))
         raw_points.append((x, y))
         min_x = min(min_x, x)
         max_x = max(max_x, x)
@@ -52,4 +58,3 @@ def generate_cycloid_points(start: Point, end: Point, parameters: CycloidParamet
         world_y = start[1] + (local_x * sin(theta) + local_y * cos(theta))
         result.append((world_x, world_y))
     return result
-
