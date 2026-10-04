@@ -7,7 +7,8 @@ Cycloid Motion Analyzer is a Windows-friendly PyQt5 desktop application for draw
 - Load PNG movement images as a zoomable, pannable background
 - Draw cycloid paths directly on top of the image with real-time preview
 - Switch between standard, prolate, and curtate cycloid profiles
-- Adjust cycloid radius, frequency, and phase with live sliders
+- Calibrate the image with an on-picture 1 metre ruler
+- Adjust cycloid radius in pixels, centimetres, or metres, plus frequency and phase
 - Select existing cycloid paths and refine them with live parameter controls
 - Trace a movement path from the image and compare it to a selected cycloid
 - Undo and redo drawing, trace replacement, and parameter edits
@@ -51,10 +52,11 @@ Cycloid Motion Analyzer is a Windows-friendly PyQt5 desktop application for draw
 
 1. Use **File → Open PNG…** to load a movement image, or **File → Load bundled demo**.
 2. Choose **Draw Cycloid** and drag on the image to create a cycloid path.
-3. Choose **Trace Movement**, drag to trace the observed motion, then right-click to finish the trace.
-4. Select a cycloid and adjust **Type**, **Radius**, **Frequency**, and **Phase** in the right panel.
-5. Click **Compare selected cycloid to movement trace** to generate metrics.
-6. Use **Undo** and **Redo** from the toolbar or Edit menu as needed.
+3. Choose **Calibrate 1 m** and drag a 1 metre ruler onto the image where a real metre appears in the scene.
+4. Choose **Trace Movement**, drag to trace the observed motion, then right-click to finish the trace.
+5. Select a cycloid and adjust **Type**, **Radius**, **Radius unit**, **Frequency**, and **Phase** in the right panel.
+6. Click **Compare selected cycloid to movement trace** to generate metrics.
+7. Use **Undo** and **Redo** from the toolbar or Edit menu as needed.
 
 ## Comparison metrics
 

@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QUndoCommand
 
-from PyQt5.QtGui import QPixmap
-
-from cycloid_analyzer.canvas import CanvasStateRecord, CycloidRecord, MovementTraceRecord
+from cycloid_analyzer.canvas import CalibrationRecord, CanvasStateRecord, CycloidRecord, MovementTraceRecord
 
 
 class AddCycloidCommand(QUndoCommand):
@@ -87,9 +86,15 @@ class ReplaceCanvasStateCommand(QUndoCommand):
             if state.movement_trace
             else None
         )
+        calibration = (
+            CalibrationRecord(state.calibration.start, state.calibration.end, state.calibration.real_length_meters)
+            if state.calibration
+            else None
+        )
         return CanvasStateRecord(
             QPixmap(state.background),
             [replace(record) for record in state.cycloids],
             trace,
+            calibration,
             list(state.selected_cycloid_ids) if include_selection_ids else [],
         )

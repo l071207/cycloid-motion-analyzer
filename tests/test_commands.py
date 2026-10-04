@@ -3,10 +3,13 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QUndoStack
 
 from cycloid_analyzer.commands import AddCycloidCommand, ReplaceMovementTraceCommand, UpdateCycloidCommand
-from cycloid_analyzer.canvas import CycloidRecord, MovementTraceRecord
+from cycloid_analyzer.canvas import CanvasView, CycloidRecord, MovementTraceRecord
 from cycloid_analyzer.cycloid import CycloidParameters
 from cycloid_analyzer.main_window import MainWindow
 
@@ -75,9 +78,8 @@ class CommandTests(unittest.TestCase):
         window.canvas._cycloid_items["c1"].setSelected(True)
         QApplication.processEvents()
 
-        window.radius_slider.sliderPressed.emit()
-        window.radius_slider.setValue(60)
-        window.radius_slider.sliderReleased.emit()
+        window.radius_spinbox.setValue(60)
+        window.radius_spinbox.editingFinished.emit()
 
         self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 60.0)
         window.undo_stack.undo()
@@ -91,10 +93,83 @@ class CommandTests(unittest.TestCase):
         window.canvas._cycloid_items["c1"].setSelected(True)
         QApplication.processEvents()
 
-        window.radius_slider.setValue(60)
+        window.radius_spinbox.setValue(60)
 
         self.assertEqual(window.canvas.cycloid_record("c1").parameters.radius, 60.0)
         self.assertFalse(window.undo_stack.canUndo())
+        window.close()
+
+    def test_metric_radius_requires_calibration(self):
+        window = MainWindow()
+        window.radius_unit_combo.setCurrentIndex(window.radius_unit_combo.findData("m"))
+        self.assertEqual(window.radius_unit_combo.currentData(), "px")
+        window.close()
+
+    def test_calibration_enables_metric_radius_conversion(self):
+        window = MainWindow()
+        window._handle_calibration_drawn((0.0, 0.0), (100.0, 0.0))
+        window.radius_unit_combo.setCurrentIndex(window.radius_unit_combo.findData("m"))
+        window.radius_spinbox.setValue(0.5)
+        window.radius_spinbox.editingFinished.emit()
+        self.assertAlmostEqual(window.current_parameters().radius, 50.0)
+        self.assertIn("1 m = 100.0 px", window.calibration_value.text())
+        window.close()
+
+    def test_calibration_enables_centimetre_radius_conversion(self):
+        window = MainWindow()
+        window._handle_calibration_drawn((0.0, 0.0), (200.0, 0.0))
+        window.radius_unit_combo.setCurrentIndex(window.radius_unit_combo.findData("cm"))
+        window.radius_spinbox.setValue(50.0)
+        window.radius_spinbox.editingFinished.emit()
+        self.assertAlmostEqual(window.current_parameters().radius, 100.0)
+        self.assertIn("1 m = 200.0 px", window.calibration_value.text())
+        window.close()
+
+    def test_tiny_calibration_drag_is_rejected(self):
+        window = MainWindow()
+        window._handle_calibration_drawn((0.0, 0.0), (3.0, 4.0))
+        self.assertIsNone(window.canvas.get_calibration_record())
+        self.assertFalse(window.undo_stack.canUndo())
+        window.close()
+
+    def test_undoing_calibration_resets_metric_radius_unit(self):
+        window = MainWindow()
+        window._handle_calibration_drawn((0.0, 0.0), (100.0, 0.0))
+        window.radius_unit_combo.setCurrentIndex(window.radius_unit_combo.findData("m"))
+        window.radius_spinbox.setValue(0.5)
+        window.undo_stack.undo()
+        self.assertEqual(window.radius_unit_combo.currentData(), "px")
+        self.assertEqual(window.radius_spinbox.value(), 40.0)
+        self.assertEqual(window.calibration_value.text(), "Scale: not calibrated")
+        window.undo_stack.redo()
+        self.assertIn("1 m = 100.0 px", window.calibration_value.text())
+        window.close()
+
+    def test_calibration_undo_redo_preserves_selection(self):
+        window = MainWindow()
+        record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))
+        window.canvas.add_cycloid(record)
+        window.canvas._cycloid_items["c1"].setSelected(True)
+        QApplication.processEvents()
+        window._handle_calibration_drawn((0.0, 0.0), (100.0, 0.0))
+        self.assertEqual(window.selection_label.text(), "Selected cycloid: c1")
+        window.undo_stack.undo()
+        self.assertEqual(window.selection_label.text(), "Selected cycloid: c1")
+        window.undo_stack.redo()
+        self.assertEqual(window.selection_label.text(), "Selected cycloid: c1")
+        self.assertIsNotNone(window.canvas.get_calibration_record())
+        window.close()
+
+    def test_radius_pixels_are_preserved_across_unit_switches(self):
+        window = MainWindow()
+        window._handle_calibration_drawn((0.0, 0.0), (100.0, 0.0))
+        self.assertAlmostEqual(window.current_parameters().radius, 40.0)
+        window.radius_unit_combo.setCurrentIndex(window.radius_unit_combo.findData("m"))
+        self.assertAlmostEqual(window.radius_spinbox.value(), 0.4)
+        self.assertAlmostEqual(window.current_parameters().radius, 40.0)
+        window.radius_unit_combo.setCurrentIndex(window.radius_unit_combo.findData("cm"))
+        self.assertAlmostEqual(window.radius_spinbox.value(), 40.0)
+        self.assertAlmostEqual(window.current_parameters().radius, 40.0)
         window.close()
 
     def test_curve_type_change_is_undoable(self):
@@ -133,15 +208,17 @@ class CommandTests(unittest.TestCase):
         window.canvas.add_cycloid(record)
         window.canvas._cycloid_items["c1"].setSelected(True)
         QApplication.processEvents()
+        window._handle_calibration_drawn((0.0, 0.0), (100.0, 0.0))
         window.metrics_label.setText("Average distance: 1.23px")
-        window.radius_slider.setValue(60)
+        window.radius_spinbox.setValue(60)
 
         window.load_demo_assets()
 
         self.assertEqual(len(window.canvas.movement_trace_points()), 14)
         self.assertTrue(window.undo_stack.canUndo())
+        self.assertIsNone(window.canvas.get_calibration_record())
         self.assertEqual(window.selection_label.text(), "Selected cycloid: none")
-        self.assertEqual(window.radius_slider.value(), 40)
+        self.assertEqual(window.radius_spinbox.value(), 40)
         self.assertEqual(window.frequency_slider.value(), 20)
         self.assertEqual(window.phase_slider.value(), 0)
         self.assertEqual(
@@ -150,7 +227,8 @@ class CommandTests(unittest.TestCase):
         )
         window.undo_stack.undo()
         self.assertEqual(window.selection_label.text(), "Selected cycloid: c1")
-        self.assertEqual(window.radius_slider.value(), 60)
+        self.assertIsNotNone(window.canvas.get_calibration_record())
+        self.assertEqual(window.radius_spinbox.value(), 60)
         self.assertEqual(len(window.canvas.movement_trace_points()), 0)
         window.close()
 
@@ -165,6 +243,40 @@ class CommandTests(unittest.TestCase):
             "Average distance: —\nRMSE: —\nMax distance: —\nLength ratio: —\nSimilarity score: —",
         )
         window.close()
+
+    def test_comparison_metrics_use_pixels_and_metres_when_calibrated(self):
+        window = MainWindow()
+        record = CycloidRecord("c1", (0.0, 0.0), (50.0, 0.0), CycloidParameters(radius=25.0))
+        window.canvas.add_cycloid(record)
+        window.canvas._cycloid_items["c1"].setSelected(True)
+        QApplication.processEvents()
+        window.canvas.set_movement_trace(MovementTraceRecord("movement-trace", window.canvas.selected_cycloid_points()))
+
+        window.compare_selected_cycloid()
+        self.assertIn("px", window.metrics_label.text())
+
+        window._handle_calibration_drawn((0.0, 0.0), (100.0, 0.0))
+        window.compare_selected_cycloid()
+        self.assertIn(" m", window.metrics_label.text())
+        window.close()
+
+    def test_calibrate_mode_emits_calibration_line(self):
+        canvas = CanvasView()
+        canvas.resize(200, 200)
+        canvas.set_background_pixmap(QPixmap(200, 200))
+        canvas.set_mode("calibrate")
+        emitted = []
+        canvas.calibration_drawn.connect(lambda start, end: emitted.append((start, end)))
+        canvas.show()
+        QApplication.processEvents()
+
+        QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=QPoint(10, 10))
+        QTest.mouseMove(canvas.viewport(), QPoint(110, 10))
+        QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=QPoint(110, 10))
+
+        self.assertEqual(len(emitted), 1)
+        self.assertNotEqual(emitted[0][0], emitted[0][1])
+        canvas.close()
 
 
 if __name__ == "__main__":

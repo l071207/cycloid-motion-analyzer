@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QGraphicsPathItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
+    QGraphicsSimpleTextItem,
     QGraphicsView,
 )
 
@@ -32,12 +33,25 @@ class MovementTraceRecord:
     points: list[Point]
 
 
+@dataclass(frozen=True)
+class CalibrationRecord:
+    start: Point
+    end: Point
+    real_length_meters: float = 1.0
+
+    @property
+    def pixels_per_meter(self) -> float:
+        return hypot(self.end[0] - self.start[0], self.end[1] - self.start[1]) / max(self.real_length_meters, 1e-9)
+
+
 @dataclass
 class CanvasStateRecord:
     background: QPixmap
     cycloids: list[CycloidRecord]
     movement_trace: MovementTraceRecord | None
+    calibration: CalibrationRecord | None
     selected_cycloid_ids: list[str]
+
 
 def build_path(points: list[Point]) -> QPainterPath:
     path = QPainterPath()
@@ -85,9 +99,31 @@ class MovementTraceItem(QGraphicsPathItem):
         self.setPath(build_path(record.points))
 
 
+class CalibrationItem(QGraphicsPathItem):
+    def __init__(self, record: CalibrationRecord):
+        super().__init__()
+        self.record = record
+        self._label = QGraphicsSimpleTextItem(self)
+        self._label.setBrush(QColor("#34d399"))
+        self.setZValue(4)
+        self.refresh()
+
+    def refresh(self) -> None:
+        self.setPath(build_path([self.record.start, self.record.end]))
+        self.setPen(QPen(QColor("#34d399"), 3, Qt.DashLine))
+        midpoint = QPointF(
+            (self.record.start[0] + self.record.end[0]) / 2.0,
+            (self.record.start[1] + self.record.end[1]) / 2.0,
+        )
+        self._label.setText(f"{self.record.real_length_meters:.1f} m")
+        label_rect = self._label.boundingRect()
+        self._label.setPos(midpoint.x() - (label_rect.width() / 2.0), midpoint.y() - label_rect.height() - 6.0)
+
+
 class CanvasView(QGraphicsView):
     cycloid_drawn = pyqtSignal(tuple, tuple)
     movement_trace_drawn = pyqtSignal(object)
+    calibration_drawn = pyqtSignal(tuple, tuple)
     cycloid_selection_changed = pyqtSignal(object)
 
     def __init__(self):
@@ -107,6 +143,7 @@ class CanvasView(QGraphicsView):
 
         self._cycloid_items: dict[str, CycloidPathItem] = {}
         self._movement_trace_item: MovementTraceItem | None = None
+        self._calibration_item: CalibrationItem | None = None
         self._mode = "select"
         self._current_parameters = CycloidParameters()
         self._draft_start: QPointF | None = None
@@ -124,8 +161,11 @@ class CanvasView(QGraphicsView):
     def set_current_parameters(self, parameters: CycloidParameters) -> None:
         self._current_parameters = parameters
 
+    def current_parameters(self) -> CycloidParameters:
+        return self._current_parameters
+
     def set_background_pixmap(self, pixmap: QPixmap) -> None:
-        self.apply_state(CanvasStateRecord(pixmap, [], None, []))
+        self.apply_state(CanvasStateRecord(pixmap, [], None, None, []))
         self.fitInView(self._background_item, Qt.KeepAspectRatio)
 
     def apply_state(self, state: CanvasStateRecord) -> None:
@@ -133,9 +173,12 @@ class CanvasView(QGraphicsView):
         for record_id in list(self._cycloid_items):
             self.remove_cycloid(record_id)
         self.set_movement_trace(None)
+        self.set_calibration(None)
         self._background_item.setPixmap(QPixmap(state.background))
         for record in state.cycloids:
             self.add_cycloid(record)
+        if state.calibration:
+            self.set_calibration(state.calibration)
         for record_id in state.selected_cycloid_ids:
             item = self._cycloid_items.get(record_id)
             if item:
@@ -147,10 +190,12 @@ class CanvasView(QGraphicsView):
     def capture_state(self) -> CanvasStateRecord:
         trace = self.get_movement_trace_record()
         trace_copy = MovementTraceRecord(trace.record_id, list(trace.points)) if trace else None
+        calibration = self.get_calibration_record()
         return CanvasStateRecord(
             QPixmap(self._background_item.pixmap()),
             [item.record for item in self._cycloid_items.values()],
             trace_copy,
+            CalibrationRecord(calibration.start, calibration.end, calibration.real_length_meters) if calibration else None,
             [record.record_id for record in [self.selected_cycloid_record()] if record],
         )
 
@@ -215,6 +260,21 @@ class CanvasView(QGraphicsView):
     def movement_trace_points(self) -> list[Point]:
         return self._movement_trace_item.record.points if self._movement_trace_item else []
 
+    def get_calibration_record(self) -> CalibrationRecord | None:
+        return self._calibration_item.record if self._calibration_item else None
+
+    def set_calibration(self, record: CalibrationRecord | None) -> None:
+        if self._calibration_item:
+            self._scene.removeItem(self._calibration_item)
+            self._calibration_item = None
+        if record:
+            self._calibration_item = CalibrationItem(record)
+            self._scene.addItem(self._calibration_item)
+
+    def calibration_pixels_per_meter(self) -> float | None:
+        calibration = self.get_calibration_record()
+        return calibration.pixels_per_meter if calibration else None
+
     def wheelEvent(self, event) -> None:
         if event.angleDelta().y() == 0:
             event.ignore()
@@ -230,6 +290,11 @@ class CanvasView(QGraphicsView):
             event.accept()
             return
         if self._mode == "draw" and event.button() == Qt.LeftButton and self._background_contains(scene_pos):
+            self._draft_start = scene_pos
+            self._set_preview(build_path([(scene_pos.x(), scene_pos.y())]))
+            event.accept()
+            return
+        if self._mode == "calibrate" and event.button() == Qt.LeftButton and self._background_contains(scene_pos):
             self._draft_start = scene_pos
             self._set_preview(build_path([(scene_pos.x(), scene_pos.y())]))
             event.accept()
@@ -264,6 +329,11 @@ class CanvasView(QGraphicsView):
             self._set_preview(build_path(points))
             event.accept()
             return
+        if self._mode == "calibrate" and self._draft_start is not None:
+            scene_pos = self._clamp_to_background(scene_pos)
+            self._set_preview(build_path([(self._draft_start.x(), self._draft_start.y()), (scene_pos.x(), scene_pos.y())]))
+            event.accept()
+            return
         if self._mode == "trace" and self._draft_points and event.buttons() & Qt.LeftButton:
             scene_pos = self._clamp_to_background(scene_pos)
             current = (scene_pos.x(), scene_pos.y())
@@ -288,6 +358,15 @@ class CanvasView(QGraphicsView):
             self._draft_start = None
             self._clear_preview()
             self.cycloid_drawn.emit(start, end)
+            event.accept()
+            return
+        if self._mode == "calibrate" and self._draft_start is not None and event.button() == Qt.LeftButton:
+            scene_pos = self._clamp_to_background(scene_pos)
+            start = (self._draft_start.x(), self._draft_start.y())
+            end = (scene_pos.x(), scene_pos.y())
+            self._draft_start = None
+            self._clear_preview()
+            self.calibration_drawn.emit(start, end)
             event.accept()
             return
         if self._mode == "trace" and self._draft_points and event.button() == Qt.LeftButton:
