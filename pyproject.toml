@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cycloid-motion-analyzer"
+version = "0.1.0"
+description = "Windows desktop application for drawing and comparing cycloid paths over movement images."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyQt5==5.15.11",
+]
+
+[project.scripts]
+cycloid-motion-analyzer = "cycloid_analyzer.main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["cycloid_analyzer*"]
+
+[tool.setuptools.package-data]
+cycloid_analyzer = ["samples/*.png", "samples/*.json"]
+
